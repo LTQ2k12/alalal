@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Web Builder</title>
+<style>
+  body {font-family: Arial; margin:0; background:#f0f2f5;}
+  .container {max-width:800px; margin:50px auto; padding:20px; background:white; border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,0.1);}
+  h2 {text-align:center; color:#4f46e5;}
+  input, button {padding:10px; margin:5px 0; width:100%; border-radius:5px; border:1px solid #ccc;}
+  button {background:#4f46e5; color:white; cursor:pointer; border:none;}
+  button:hover {background:#4338ca;}
+  #preview {margin-top:20px; border:1px solid #ccc; height:400px; width:100%; border-radius:5px;}
+  .hidden {display:none;}
+  .nav {display:flex; justify-content:space-around; margin-bottom:20px;}
+  .nav button {width:48%;}
+  label {margin-top:10px; display:block;}
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>Mini Web Builder</h2>
+
+  <div class="nav">
+    <button onclick="showTab('login')">Đăng nhập</button>
+    <button onclick="showTab('register')">Đăng ký</button>
+  </div>
+
+  <!-- Đăng nhập -->
+  <div id="loginTab">
+    <input type="email" id="loginEmail" placeholder="Email">
+    <input type="password" id="loginPassword" placeholder="Mật khẩu">
+    <button onclick="login()">Đăng nhập</button>
+  </div>
+
+  <!-- Đăng ký -->
+  <div id="registerTab" class="hidden">
+    <input type="email" id="regEmail" placeholder="Email">
+    <input type="password" id="regPassword" placeholder="Mật khẩu">
+    <button onclick="register()">Đăng ký</button>
+  </div>
+
+  <!-- Upload file -->
+  <div id="uploadSection" class="hidden">
+    <h3>Tải lên file HTML/CSS/Ảnh/Video</h3>
+    <input type="file" id="fileInput">
+    <button onclick="previewFile()">Xem trước</button>
+    <p><button onclick="logout()">Đăng xuất</button></p>
+  </div>
+
+  <!-- Preview -->
+  <iframe id="preview" class="hidden"></iframe>
+</div>
+
+<script>
+let currentUser = localStorage.getItem('currentUser') || null;
+
+// Load saved user files
+let userFiles = JSON.parse(localStorage.getItem('userFiles') || "{}");
+
+function showTab(tab) {
+  document.getElementById('loginTab').classList.add('hidden');
+  document.getElementById('registerTab').classList.add('hidden');
+  document.getElementById('uploadSection').classList.add('hidden');
+  if(tab === 'upload' && currentUser) {
+    document.getElementById('uploadSection').classList.remove('hidden');
+  } else {
+    document.getElementById(tab+'Tab').classList.remove('hidden');
+  }
+}
+
+// Đăng ký
+function register() {
+  const email = document.getElementById('regEmail').value;
+  const password = document.getElementById('regPassword').value;
+  let users = JSON.parse(localStorage.getItem('users') || "{}");
+  if(users[email]){
+    alert("Email đã tồn tại!");
+    return;
+  }
+  users[email] = password;
+  localStorage.setItem('users', JSON.stringify(users));
+  alert("Đăng ký thành công! Hãy đăng nhập.");
+  showTab('login');
+}
+
+// Đăng nhập
+function login() {
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  let users = JSON.parse(localStorage.getItem('users') || "{}");
+  if(users[email] && users[email] === password){
+    currentUser = email;
+    localStorage.setItem('currentUser', currentUser);
+    alert("Đăng nhập thành công!");
+    showTab('upload');
+  } else {
+    alert("Email hoặc mật khẩu không đúng!");
+  }
+}
+
+// Đăng xuất
+function logout(){
+  currentUser = null;
+  localStorage.removeItem('currentUser');
+  showTab('login');
+}
+
+// Preview file
+function previewFile() {
+  const file = document.getElementById('fileInput').files[0];
+  if(!file) { alert("Chọn file!"); return; }
+
+  const allowedTypes = ["text/html","text/css","image/png","image/jpeg","image/gif","video/mp4"];
+  if(!allowedTypes.includes(file.type)){
+    alert("Chỉ cho phép HTML, CSS, hình ảnh hoặc video!");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const preview = document.getElementById('preview');
+    preview.classList.remove('hidden');
+
+    if(!userFiles[currentUser]) userFiles[currentUser] = {};
+    userFiles[currentUser][file.name] = e.target.result;
+    localStorage.setItem('userFiles', JSON.stringify(userFiles));
+
+    if(file.type === "text/html"){
+      preview.srcdoc = e.target.result;
+    } else if(file.type.startsWith("image/")){
+      preview.srcdoc = `<img src="${e.target.result}" style="max-width:100%;">`;
+    } else if(file.type.startsWith("video/")){
+      preview.srcdoc = `<video controls style="max-width:100%"><source src="${e.target.result}" type="${file.type}">Video không hỗ trợ</video>`;
+    } else if(file.type === "text/css"){
+      preview.srcdoc = `<style>${e.target.result}</style><p>CSS đã tải xong. Chèn HTML để xem hiệu ứng.</p>`;
+    }
+  }
+  reader.readAsDataURL(file);
+}
+
+// Auto-login nếu đã login trước đó
+if(currentUser){
+  showTab('upload');
+}
+</script>
+</body>
+</html>
